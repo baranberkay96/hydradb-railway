@@ -1,0 +1,403 @@
+{
+  "name": "HydraDB v0.3 Graph Database on Object Storage",
+  "description": "Cypher graph database that keeps its data in S3-compatible object storage.",
+  "category": "Storage",
+  "tags": [
+    "hydradb",
+    "graph-database",
+    "cypher",
+    "opencypher",
+    "bolt",
+    "neo4j-drivers",
+    "object-storage",
+    "s3"
+  ],
+  "image": "https://cdn.jsdelivr.net/gh/hydra-db/benchmark@f4598348cb9fe448cda62ab1408381fa1e9863c0/docs/favicon.svg",
+  "upstream": {
+    "repo": "hydra-db/hydradb",
+    "version": "v0.3.0",
+    "commit": "0283b42fdf3d5c6e22dc9720445d131a16949104",
+    "image": "ghcr.io/hydra-db/hydradb:0.3.0@sha256:515ee78600b5d543f9146e62e775c76a8d5d0309773c165b918ed770649a91f3",
+    "license": "AGPL-3.0",
+    "checked": "2026-10-30"
+  },
+  "services": {
+    "HydraDB": {
+      "icon": "https://cdn.jsdelivr.net/gh/hydra-db/benchmark@f4598348cb9fe448cda62ab1408381fa1e9863c0/docs/favicon.svg",
+      "source": {
+        "repo": "baranberkay96/hydradb-railway",
+        "rootDirectory": "/services/hydradb"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/readyz",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": true,
+      "targetPort": 8443,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/var/cache/slatedb"
+      },
+      "variables": {
+        "HYDRADB_ROLE": {
+          "defaultValue": "node",
+          "description": "Program this service runs: node = graph-node (Bolt 7687, HTTP query API 8443, admin 9090).",
+          "required": false
+        },
+        "PORT": {
+          "defaultValue": "9090",
+          "description": "Admin port. Railway's healthcheck GETs /readyz here; ready once the Bucket passes the write probe.",
+          "required": false
+        },
+        "HYDRADB_AUTH_TOKEN": {
+          "defaultValue": "${{secret(48, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\")}}",
+          "description": "Bearer token for the HTTP API and the Bolt password (any user name). 32+ chars of A-Z a-z 0-9 . _ ~ -.",
+          "required": false
+        },
+        "CLOUD_PROVIDER": {
+          "defaultValue": "aws",
+          "description": "Object store type read by SlateDB. aws = any S3-compatible store, here the Railway Bucket.",
+          "required": false
+        },
+        "AWS_BUCKET_NAME": {
+          "defaultValue": "${{Bucket.BUCKET}}",
+          "description": "Bucket that holds the graph (records, WALs, leases, indexes). The source of truth for all data.",
+          "required": false
+        },
+        "AWS_ACCESS_KEY_ID": {
+          "defaultValue": "${{Bucket.ACCESS_KEY_ID}}",
+          "description": "Bucket access key.",
+          "required": false
+        },
+        "AWS_SECRET_ACCESS_KEY": {
+          "defaultValue": "${{Bucket.SECRET_ACCESS_KEY}}",
+          "description": "Bucket secret key.",
+          "required": false
+        },
+        "AWS_REGION": {
+          "defaultValue": "${{Bucket.REGION}}",
+          "description": "Bucket region used to sign S3 requests.",
+          "required": false
+        },
+        "HYDRADB_S3_ENDPOINT": {
+          "defaultValue": "${{Bucket.ENDPOINT}}",
+          "description": "S3 endpoint without the bucket name. The start script derives AWS_ENDPOINT from it.",
+          "required": false
+        },
+        "HYDRADB_S3_ADDRESSING": {
+          "defaultValue": "virtual",
+          "description": "virtual = https://{bucket}.{endpoint host} (new Railway Buckets); path for older buckets (see Credentials tab).",
+          "required": false
+        },
+        "GRAPH_NAMESPACE": {
+          "defaultValue": "default",
+          "description": "Namespace of the graph. With 'default' the X-Graph-Namespace HTTP header is optional.",
+          "required": false
+        },
+        "GRAPH_ID": {
+          "defaultValue": "default",
+          "description": "Graph id, used in the HTTP path /v1/graphs/{id}/query.",
+          "required": false
+        },
+        "GRAPH_DATABASE": {
+          "defaultValue": "default",
+          "description": "Bolt database name: pass it as the session database in Neo4j drivers.",
+          "required": false
+        },
+        "GRAPH_CELL_ID": {
+          "defaultValue": "cell-0",
+          "description": "Partition (cell) this node owns. Every HTTP query must send it as cell_id.",
+          "required": false
+        },
+        "GRAPH_CELLS": {
+          "defaultValue": "${{GRAPH_CELL_ID}}",
+          "description": "All cells of the graph, comma-separated. Must contain GRAPH_CELL_ID.",
+          "required": false
+        },
+        "GRAPH_DATA_PATH": {
+          "defaultValue": "hydradb",
+          "description": "Prefix inside the Bucket for all HydraDB objects. Do not change after the first write.",
+          "required": false
+        },
+        "GRAPH_NODE_ID": {
+          "defaultValue": "hydradb-0",
+          "description": "Stable node id used for heartbeats, writer leases and Bolt routing tables.",
+          "required": false
+        },
+        "GRAPH_ADVERTISED_BOLT_ADDR": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}:7687",
+          "description": "Bolt address this node puts in routing tables (neo4j:// URIs). Private network by default.",
+          "required": false
+        },
+        "GRAPH_INDEXER_NOTIFY_URL": {
+          "defaultValue": "http://${{HydraDB Indexer.RAILWAY_PRIVATE_DOMAIN}}:9091/v1/changes:process",
+          "description": "Wakes the indexer after writes (sent with the bearer token). Empty = the indexer only polls.",
+          "required": false
+        },
+        "HYDRADB_TLS": {
+          "defaultValue": "off",
+          "description": "off = plaintext behind Railway's HTTPS edge. self-signed = TLS on Bolt and HTTP (breaks the public domain).",
+          "required": false
+        },
+        "GRAPH_DATA_CACHE_BYTES": {
+          "defaultValue": "auto",
+          "description": "SlateDB disk cache on the volume. auto = 75% of the volume, 64 MiB to 8 GiB; or a number of bytes.",
+          "required": false
+        },
+        "GRAPH_SLATE_DB_CACHE_BYTES": {
+          "defaultValue": "auto",
+          "description": "SlateDB RAM cache. auto = 5/16 of the memory budget, 64 MiB to 2 GiB; or bytes (0 disables it).",
+          "required": false
+        },
+        "GRAPH_MAX_GRAPHBLAS_BYTES": {
+          "defaultValue": "auto",
+          "description": "Memory for compiled GraphBLAS matrices. auto = 1/16 of the memory budget, 32 to 512 MiB; or bytes.",
+          "required": false
+        },
+        "HYDRADB_MEMORY_LIMIT_MB": {
+          "defaultValue": "auto",
+          "description": "Memory budget for the auto sizes. auto = the container limit (2 GiB if none is visible); or MiB.",
+          "required": false
+        },
+        "HYDRADB_CPU_LIMIT": {
+          "defaultValue": "auto",
+          "description": "Cores for thread pools. auto = the container CPU quota (else nproc), capped at 8; or a number.",
+          "required": false
+        },
+        "GRAPHBLAS_NTHREADS": {
+          "defaultValue": "auto",
+          "description": "SuiteSparse GraphBLAS threads. auto = HYDRADB_CPU_LIMIT's core count.",
+          "required": false
+        },
+        "TOKIO_WORKER_THREADS": {
+          "defaultValue": "auto",
+          "description": "Async runtime worker threads. auto = the core count, at least 2.",
+          "required": false
+        },
+        "HYDRADB_CACHE_RESET": {
+          "defaultValue": "false",
+          "description": "true empties the disk cache at every start. Use once after emptying or replacing the Bucket's data.",
+          "required": false
+        },
+        "GRAPH_CYPHER_ENGINE": {
+          "defaultValue": "legacy",
+          "description": "legacy = the documented OpenCypher subset. experimental = upstream's newer engine (not for production).",
+          "required": false
+        },
+        "RUST_LOG": {
+          "defaultValue": "info",
+          "description": "Log filter (JSON logs). e.g. info,hydradb=debug for more detail.",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "60",
+          "description": "Seconds between SIGTERM and SIGKILL, so the node drains queries and hands back its writer lease.",
+          "required": false
+        },
+        "HYDRADB_HOST": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}",
+          "description": "Private host name for clients that take host and port separately.",
+          "required": false
+        },
+        "HYDRADB_URL": {
+          "defaultValue": "http://${{RAILWAY_PRIVATE_DOMAIN}}:8443",
+          "description": "HTTP query API base URL on the private network. Reference it as ${{HydraDB.HYDRADB_URL}}.",
+          "required": false
+        },
+        "HYDRADB_QUERY_URL": {
+          "defaultValue": "${{HYDRADB_URL}}/v1/graphs/${{GRAPH_ID}}/query",
+          "description": "POST endpoint for queries (JSON body with cell_id and query; bearer token).",
+          "required": false
+        },
+        "HYDRADB_BOLT_URL": {
+          "defaultValue": "bolt://${{RAILWAY_PRIVATE_DOMAIN}}:7687",
+          "description": "Bolt URL for Neo4j drivers on the private network.",
+          "required": false
+        },
+        "HYDRADB_PUBLIC_URL": {
+          "defaultValue": "https://${{RAILWAY_PUBLIC_DOMAIN}}",
+          "description": "HTTPS query API on the public domain (token required). Egress-billed; prefer the private URL.",
+          "required": false
+        },
+        "HYDRADB_METRICS_URL": {
+          "defaultValue": "http://${{RAILWAY_PRIVATE_DOMAIN}}:9090/metrics",
+          "description": "Prometheus scrape URL on the private network (no auth, never public).",
+          "required": false
+        },
+        "NEO4J_URI": {
+          "defaultValue": "${{HYDRADB_BOLT_URL}}",
+          "description": "Same as HYDRADB_BOLT_URL, under the name Neo4j-driver apps usually read.",
+          "required": false
+        },
+        "NEO4J_USERNAME": {
+          "defaultValue": "neo4j",
+          "description": "Bolt user name. HydraDB ignores it; any value works.",
+          "required": false
+        },
+        "NEO4J_PASSWORD": {
+          "defaultValue": "${{HYDRADB_AUTH_TOKEN}}",
+          "description": "Bolt password = the bearer token.",
+          "required": false
+        },
+        "NEO4J_DATABASE": {
+          "defaultValue": "${{GRAPH_DATABASE}}",
+          "description": "Bolt session database.",
+          "required": false
+        }
+      }
+    },
+    "HydraDB Indexer": {
+      "icon": "https://cdn.jsdelivr.net/gh/hydra-db/benchmark@f4598348cb9fe448cda62ab1408381fa1e9863c0/docs/favicon.svg",
+      "source": {
+        "repo": "baranberkay96/hydradb-railway",
+        "rootDirectory": "/services/hydradb"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/readyz",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ALWAYS",
+      "restartPolicyMaxRetries": null,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "HYDRADB_ROLE": {
+          "defaultValue": "indexer",
+          "description": "Program this service runs: indexer = graph-indexer (builds traversal indexes; admin 9091).",
+          "required": false
+        },
+        "PORT": {
+          "defaultValue": "9091",
+          "description": "Indexer admin port. Railway's healthcheck GETs /readyz here.",
+          "required": false
+        },
+        "HYDRADB_AUTH_TOKEN": {
+          "defaultValue": "${{HydraDB.HYDRADB_AUTH_TOKEN}}",
+          "description": "The node's token. The indexer accepts change notifications only with it.",
+          "required": false
+        },
+        "CLOUD_PROVIDER": {
+          "defaultValue": "${{HydraDB.CLOUD_PROVIDER}}",
+          "description": "Same object store as the node.",
+          "required": false
+        },
+        "AWS_BUCKET_NAME": {
+          "defaultValue": "${{HydraDB.AWS_BUCKET_NAME}}",
+          "description": "Same bucket as the node.",
+          "required": false
+        },
+        "AWS_ACCESS_KEY_ID": {
+          "defaultValue": "${{HydraDB.AWS_ACCESS_KEY_ID}}",
+          "description": "Same bucket access key as the node.",
+          "required": false
+        },
+        "AWS_SECRET_ACCESS_KEY": {
+          "defaultValue": "${{HydraDB.AWS_SECRET_ACCESS_KEY}}",
+          "description": "Same bucket secret key as the node.",
+          "required": false
+        },
+        "AWS_REGION": {
+          "defaultValue": "${{HydraDB.AWS_REGION}}",
+          "description": "Same region as the node.",
+          "required": false
+        },
+        "HYDRADB_S3_ENDPOINT": {
+          "defaultValue": "${{HydraDB.HYDRADB_S3_ENDPOINT}}",
+          "description": "Same S3 endpoint as the node.",
+          "required": false
+        },
+        "HYDRADB_S3_ADDRESSING": {
+          "defaultValue": "${{HydraDB.HYDRADB_S3_ADDRESSING}}",
+          "description": "Same addressing style as the node.",
+          "required": false
+        },
+        "GRAPH_NAMESPACE": {
+          "defaultValue": "${{HydraDB.GRAPH_NAMESPACE}}",
+          "description": "Same namespace as the node.",
+          "required": false
+        },
+        "GRAPH_ID": {
+          "defaultValue": "${{HydraDB.GRAPH_ID}}",
+          "description": "Same graph id as the node.",
+          "required": false
+        },
+        "GRAPH_CELLS": {
+          "defaultValue": "${{HydraDB.GRAPH_CELLS}}",
+          "description": "Same cells as the node.",
+          "required": false
+        },
+        "GRAPH_DATA_PATH": {
+          "defaultValue": "${{HydraDB.GRAPH_DATA_PATH}}",
+          "description": "Same data prefix as the node.",
+          "required": false
+        },
+        "GRAPH_INDEXER_BUILD_MODE": {
+          "defaultValue": "full",
+          "description": "full rebuilds each index generation (upstream default); incremental reuses the previous one.",
+          "required": false
+        },
+        "GRAPH_INDEXER_INTERVAL_MS": {
+          "defaultValue": "5000",
+          "description": "Full sweep interval over all graph scopes (upstream default).",
+          "required": false
+        },
+        "GRAPH_INDEXER_DIRTY_POLL_INTERVAL_MS": {
+          "defaultValue": "1000",
+          "description": "Poll for changed graphs (50-60000). 1000 instead of upstream's 250: the node already wakes the indexer.",
+          "required": false
+        },
+        "GRAPH_INDEXER_RETAIN_PREVIOUS": {
+          "defaultValue": "1",
+          "description": "Older index generations kept in the Bucket for readers still using them.",
+          "required": false
+        },
+        "GRAPH_SLATE_DB_CACHE_BYTES": {
+          "defaultValue": "auto",
+          "description": "SlateDB RAM cache. auto = 5/16 of the memory budget, 64 MiB to 2 GiB; or bytes.",
+          "required": false
+        },
+        "HYDRADB_MEMORY_LIMIT_MB": {
+          "defaultValue": "auto",
+          "description": "Memory budget for the auto sizes. auto = the container limit (2 GiB if none is visible); or MiB.",
+          "required": false
+        },
+        "HYDRADB_CPU_LIMIT": {
+          "defaultValue": "auto",
+          "description": "Cores for thread pools. auto = the container CPU quota (else nproc), capped at 8; or a number.",
+          "required": false
+        },
+        "GRAPHBLAS_NTHREADS": {
+          "defaultValue": "auto",
+          "description": "SuiteSparse GraphBLAS threads. auto = HYDRADB_CPU_LIMIT's core count.",
+          "required": false
+        },
+        "TOKIO_WORKER_THREADS": {
+          "defaultValue": "auto",
+          "description": "Async runtime worker threads. auto = the core count, at least 2.",
+          "required": false
+        },
+        "RUST_LOG": {
+          "defaultValue": "info",
+          "description": "Log filter (JSON logs).",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "60",
+          "description": "Seconds between SIGTERM and SIGKILL, so an index build can stop cleanly.",
+          "required": false
+        }
+      }
+    }
+  },
+  "buckets": [
+    "Bucket"
+  ]
+}
