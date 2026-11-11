@@ -1,5 +1,6 @@
 {
-  "name": "HydraDB v0.3 Graph Database on Object Storage",
+  "name": "HydraDB Graph Database on Object Storage",
+  "idSeed": "HydraDB v0.3 Graph Database on Object Storage",
   "description": "Cypher graph database that keeps its data in S3-compatible object storage.",
   "category": "Storage",
   "tags": [

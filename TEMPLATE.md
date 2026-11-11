@@ -1,4 +1,4 @@
-# HydraDB v0.3 Graph Database on Object Storage — Railway template spec
+# HydraDB Graph Database on Object Storage — Railway template spec
 
 ## Listing
 
